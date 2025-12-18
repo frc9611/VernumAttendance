@@ -1,0 +1,63 @@
+body {
+    font-family: "Outfit", sans-serif;
+    background: linear-gradient(140deg, #5C288F -28.25%, #BA63FF 93.88%);
+    min-height: 100vh;
+}
+
+.card {
+    border-radius: 1.5rem;
+    backdrop-filter: blur(10px);
+    background-color: rgba(255, 255, 255, 0.95);
+}
+
+.form-control {
+    border-radius: 0.75rem;
+    border: 2px solid #e9ecef;
+    transition: all 0.3s ease;
+}
+
+.form-control:focus {
+    border-color: #0d6efd;
+    box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.15);
+}
+
+.btn-primary {
+    border-radius: 0.75rem;
+    transition: all 0.3s ease;
+}
+
+.btn-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 0.5rem 1rem rgba(13, 110, 253, 0.15) !important;
+}
+
+h1 {
+    font-weight: 800 !important;
+    letter-spacing: -1px;
+}
+
+h2 {
+    font-weight: 600 !important;
+}
+
+.form-label {
+    font-weight: 500 !important;
+}
+
+.btn {
+    font-weight: 600 !important;
+    letter-spacing: 0.5px;
+}
+
+p.text-muted {
+    font-weight: 300 !important;
+}
+
+span {
+    font-family: "Outfit";
+    font-weight: 300;
+}
+
+.cy-white {
+    color: #FAFAFA !important;
+}
