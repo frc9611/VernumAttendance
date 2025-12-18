@@ -10,6 +10,7 @@ String.prototype.toHHMMSS = function () {
     return hours+':'+minutes+':'+seconds;
 }
 function secondsToDuration(seconds) {
+    if(seconds == 0) return "0s";
     const units = [
         { label: "y", value: 31536000 }, // 1 year = 365 * 24 * 60 * 60 seconds
         { label: "m", value: 2592000 },  // 1 month = 30 * 24 * 60 * 60 seconds
