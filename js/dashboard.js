@@ -123,16 +123,19 @@ window.addEventListener("load", (event) => {
                 url: vernumServerInstance + "attendances/" + endpoint,
                 type: "POST",
                 crossDomain: true,
-                dataType: "json",
-                contentType: "application/json",
                 headers: {
                       "accept": "application/json",
                       "Access-Control-Allow-Origin":"*",
                       "Authorization": "Bearer " + getToken()
+                },
+                success: function(response) {
+                                document.location.reload();
+                },
+                error: function(xhr, status) {
+                    alert("Erro ao atualizar");
                 }
             })
     
-            document.location.reload();
         
         });
     });
