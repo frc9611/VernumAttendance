@@ -33,7 +33,7 @@ function secondsToDuration(seconds) {
 
     return result.join(" ");
 }
-const vernumServerInstance = "http://localhost:8080/"
+const vernumServerInstance = "https://vernumserver-0p1s.onrender.com/"
 
 if(localStorage.getItem("auth") === null) {
     window.location.href = "index.html";
