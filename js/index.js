@@ -23,7 +23,7 @@ function secondsToDuration(seconds) {
     return result.join(" ");
 }
 
-const vernumServerInstance = "http://localhost:8080/"
+const vernumServerInstance = "https://vernumserver-0p1s.onrender.com/"
 
 function loginFormSubmit(event) {
     username = document.getElementById("user").value;
