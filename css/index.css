@@ -43,6 +43,19 @@ h2 {
 
 }
 
+h4 {
+    text-align: center;
+    font-family: "Outfit";
+}
+
+thead {
+        font-family: "Outfit";
+}
+
+tbody {
+        font-family: "Outfit";
+}
+
 .form-label {
     font-weight: 500 !important;
 }
@@ -63,4 +76,29 @@ span {
 
 .cy-white {
     color: #FAFAFA !important;
+}
+
+.ranking-table-container {
+    max-height: 400px;
+    overflow-y: auto;
+    box-shadow: inset 0 0 10px rgba(0,0,0,0.05);
+}
+
+/* Custom Scrollbar for Webkit */
+.ranking-table-container::-webkit-scrollbar {
+    width: 8px;
+}
+
+.ranking-table-container::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 4px;
+}
+
+.ranking-table-container::-webkit-scrollbar-thumb {
+    background: #c1c1c1;
+    border-radius: 4px;
+}
+
+.ranking-table-container::-webkit-scrollbar-thumb:hover {
+    background: #a8a8a8;
 }
