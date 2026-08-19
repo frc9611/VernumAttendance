@@ -38,13 +38,22 @@ VernumCloud (**Painel admin → Apps da equipe**). O servidor já cadastra
 `http://localhost:8090/index.html` no boot; para servir de outro lugar, acrescente o endereço
 novo na lista do app (ou ajuste `VERNUM_ATTENDANCE_REDIRECT_URIS` no `.env` do servidor).
 
-Endereços do servidor e do dashboard ficam em `js/config.js`. Para apontar uma máquina para outro
-servidor sem editar arquivo:
+Os endereços de produção são o padrão em `js/config.js` (`vernumserver-0p1s.onrender.com` e
+`cloud.frc9611.com`). Para apontar uma máquina para um servidor local sem editar arquivo:
 
 ```js
-localStorage.setItem("vernum.api", "http://192.168.0.10:8080")
-localStorage.setItem("vernum.cloud", "http://192.168.0.10:8081")
+localStorage.setItem("vernum.api", "http://localhost:8099")
+localStorage.setItem("vernum.cloud", "http://localhost:8081")
 ```
+
+### Servir por HTTP, fora do localhost
+
+`crypto.subtle` do navegador **só existe em contexto seguro**: HTTPS ou `localhost`. Um quiosque
+servido por `http://` a partir de um IP da rede não tem `crypto.subtle`, e o login morria ali com
+"can't access property digest". O SHA-256 do PKCE tem uma implementação própria em `js/vernum.js`
+para esse caso — conferida contra o exemplo da RFC 7636 e contra o `crypto` do node.
+
+Ainda assim, **prefira HTTPS**: por HTTP o token trafega em claro na rede local.
 
 ## Arquivos
 
