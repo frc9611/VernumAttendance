@@ -13,7 +13,7 @@
  * kiosk moves to a new address, that address has to be added there first.
  */
 const VernumConfig = {
-  api: localStorage.getItem('vernum.api') || 'https://vernumserver-0p1s.onrender.com',
+  api: localStorage.getItem('vernum.api') || 'https://vernumserver-prod.onrender.com',
   cloud: localStorage.getItem('vernum.cloud') || 'https://cloud.frc9611.com',
 
   /** client_id of the kiosk, registered by the server on the boot. */

@@ -62,21 +62,46 @@ async function vernumCall(method, path, body, options) {
     headers.Authorization = 'Bearer ' + token;
   }
 
-  const response = await fetch(VernumConfig.api + path, {
-    method: method,
-    headers: headers,
-    body: body === undefined || body === null ? undefined : JSON.stringify(body),
-  });
+  let response;
+  try {
+    response = await fetch(VernumConfig.api + path, {
+      method: method,
+      headers: headers,
+      body: body === undefined || body === null ? undefined : JSON.stringify(body),
+    });
+  } catch (error) {
+    /*
+     * fetch only throws like this when the browser never got an answer the page is allowed to read:
+     * the server is down, the address is wrong, or it answered the preflight without the CORS
+     * headers. The browser reports all three the same way — "Failed to fetch" — and showing that on
+     * the kiosk says nothing to whoever is standing in front of it. Naming the address turns it into
+     * something checkable, which is the whole difference when the kiosk is pointed at an old deploy.
+     */
+    const failure = new Error('Não foi possível falar com o servidor do Vernum em ' + VernumConfig.api
+      + '. Confira se esse é o endereço certo, se ele está no ar e se ele libera esta origem ('
+      + window.location.origin + ').');
+    failure.status = 0;
+    failure.cause = error;
+    throw failure;
+  }
 
   const text = await response.text();
-  const payload = text ? JSON.parse(text) : null;
+  //A proxy or an old deploy can answer HTML where the API would answer JSON, and that must not
+  //surface as a parse error on top of the real one
+  let payload = null;
+  try {
+    payload = text ? JSON.parse(text) : null;
+  } catch (error) {
+    payload = null;
+  }
   if (!response.ok) {
     //A token that is gone is not an error to show: it is a login to redo
     if (response.status === 401 && !settings.anonymous) {
       VernumSession.clear();
       window.location.href = 'index.html';
     }
-    const error = new Error((payload && payload.message) || 'Não foi possível concluir a ação.');
+    const error = new Error((payload && payload.message)
+      || 'O servidor respondeu ' + response.status + ' em ' + path + '.');
     error.status = response.status;
     throw error;
   }
