@@ -1,106 +1,77 @@
-function secondsToDuration(seconds) {
-    if(seconds == 0) return "0s";
-    const units = [
-        { label: "y", value: 31536000 }, // 1 year = 365 * 24 * 60 * 60 seconds
-        { label: "m", value: 2592000 },  // 1 month = 30 * 24 * 60 * 60 seconds
-        { label: "d", value: 86400 },    // 1 day = 24 * 60 * 60 seconds
-        { label: "h", value: 3600 },     // 1 hour = 60 * 60 seconds
-        { label: "m", value: 60 },       // 1 minute = 60 seconds
-        { label: "s", value: 1 }         // 1 second
-    ];
+/*
+ * Login page of the kiosk.
+ *
+ * Two ways in. The button sends the person to the VernumCloud, which is where the password
+ * is typed — the kiosk never sees it — and brings back a one-time code this page trades for
+ * a token. The form below is the old way, kept for when the kiosk is the only screen around.
+ *
+ * This same page is the return address of the login, so it starts by checking whether the
+ * current load is a code coming back.
+ */
 
-    let remainingSeconds = seconds;
-    let result = [];
+function setStatus(message, kind) {
+  const status = document.getElementById('login-status');
+  status.innerText = message || '';
+  status.className = kind === 'error' ? 'text-danger fw-bold' : 'text-secondary fw-bold';
+}
 
-    for (const unit of units) {
-        const count = Math.floor(remainingSeconds / unit.value);
-        if (count > 0) {
-            result.push(`${count}${unit.label}`);
-            remainingSeconds %= unit.value;
-        }
+async function onVernumLogin(event) {
+  event.preventDefault();
+  setStatus('Abrindo o VernumCloud...');
+  try {
+    await startVernumLogin();
+  } catch (error) {
+    setStatus('Não foi possível abrir o login: ' + error.message, 'error');
+  }
+}
+
+async function onPasswordLogin(event) {
+  event.preventDefault();
+  const username = document.getElementById('user').value;
+  const password = document.getElementById('password').value;
+  if (!username || !password) {
+    setStatus('Preencha usuário e senha.', 'error');
+    return;
+  }
+  setStatus('Conectando...');
+  try {
+    await loginWithPassword(username, password);
+    window.location.href = 'dashboard.html';
+  } catch (error) {
+    setStatus(error.status === 401 || error.status === 403
+      ? 'Dados de acesso incorretos' : error.message, 'error');
+  }
+}
+
+window.addEventListener('load', async () => {
+  document.getElementById('vernum-login-btn').addEventListener('click', onVernumLogin);
+  document.getElementById('login-btn').addEventListener('click', onPasswordLogin);
+  document.getElementById('password').addEventListener('keydown', (event) => {
+    if (event.key === 'Enter') onPasswordLogin(event);
+  });
+
+  //Coming back from the VernumCloud with a code
+  try {
+    const session = await finishVernumLogin();
+    if (session) {
+      setStatus('Bem-vindo, ' + session.user.name + '!');
+      window.location.href = 'dashboard.html';
+      return;
     }
+  } catch (error) {
+    setStatus(error.message, 'error');
+  }
 
-    return result.join(" ");
-}
-
-const vernumServerInstance = "https://vernumserver-0p1s.onrender.com/"
-
-function loginFormSubmit(event) {
-    username = document.getElementById("user").value;
-    password = document.getElementById("password").value;
-
-    $.ajax({
-        url: vernumServerInstance + "login",
-        type: "POST",
-        crossDomain: true,
-        data: JSON.stringify({username: username, password: password}),
-        dataType: "json",
-        contentType: "application/json",
-        headers: {
-              "accept": "application/json",
-              "Access-Control-Allow-Origin":"*"
-        },
-        success: function(response) {
-            document.getElementById("login-status").innerText = "Conectando...";
-            localStorage.setItem("auth", JSON.stringify(response));
-
-            document.location.href = "dashboard.html";
-        },
-        error: function(xhr, status) {
-            document.getElementById("login-status").innerText = "Dados de acesso incorretos"; 
-        }
-    })
-
-    event.preventDefault();
-}
-
-function loadRanking() {
-    $.ajax({
-        url: vernumServerInstance + "attendances/ranking",
-        type: "GET",
-        crossDomain: true,
-        dataType: "json",
-        contentType: "application/json",
-        headers: {
-              "accept": "application/json",
-              "Access-Control-Allow-Origin":"*"
-        },
-        success: function(response) {
-            console.log(response)
-            idx = 0;
-            tbody = document.getElementById("ranking-body");
-            Object.keys(response).forEach(function(k){
-                idx++;
-                console.log(k + ' - ' + response[k]);
-                username = k;
-                seconds = response[k];
-                tr = document.createElement("tr");
-                th = document.createElement("th");
-                th.scope = "row";
-                th.innerText = idx;
-
-                tdName = document.createElement("td");
-                tdName.innerText = username;
-
-                tdTime = document.createElement("td");
-                tdTime.innerText = secondsToDuration(seconds);
-
-                tr.appendChild(th);
-                tr.appendChild(tdName);
-                tr.appendChild(tdTime);
-
-                tbody.appendChild(tr);
-            });
-        },
-        error: function(xhr, status) {
-            alert("error")
-        }
-    })
-}
-
-window.addEventListener("load", (event) => {
-  document.getElementById("login-btn").addEventListener("click", loginFormSubmit);
-  loadRanking();
+  //Already logged in on this machine
+  if (VernumSession.token()) {
+    document.getElementById('already-logged').classList.remove('d-none');
+    document.getElementById('already-name').innerText = VernumSession.read().user.name;
+    document.getElementById('continue-btn').addEventListener('click', () => {
+      window.location.href = 'dashboard.html';
+    });
+    document.getElementById('forget-btn').addEventListener('click', () => {
+      VernumSession.clear();
+      window.location.reload();
+    });
+  }
 });
-
-

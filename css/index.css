@@ -102,3 +102,47 @@ span {
 .ranking-table-container::-webkit-scrollbar-thumb:hover {
     background: #a8a8a8;
 }
+/* The button that takes the person to the VernumCloud: the purple of the platform. */
+.vernum-btn {
+    background: #8864AE;
+    border-color: #8864AE;
+}
+
+.vernum-btn:hover,
+.vernum-btn:focus {
+    background: #74519A;
+    border-color: #74519A;
+}
+
+/* One card per team of the person. The stripe carries the color of the team. */
+.team-card {
+    position: relative;
+    background: rgba(255, 255, 255, 0.95);
+    border: 2px solid #e9ecef;
+    border-radius: 1rem;
+    padding: 14px 16px 14px 20px;
+    overflow: hidden;
+    font-family: "Outfit", sans-serif;
+    transition: transform 0.12s ease, box-shadow 0.12s ease;
+}
+
+.team-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.1);
+}
+
+.team-card--active {
+    box-shadow: 0 0 0 0.2rem rgba(136, 100, 174, 0.25);
+}
+
+.team-card__stripe {
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 6px;
+}
+
+.team-card .badge {
+    margin-top: 6px;
+}

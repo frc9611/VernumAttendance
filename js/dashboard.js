@@ -1,144 +1,209 @@
-String.prototype.toHHMMSS = function () {
-    var sec_num = parseInt(this, 10); // don't forget the second param
-    var hours   = Math.floor(sec_num / 3600);
-    var minutes = Math.floor((sec_num - (hours * 3600)) / 60);
-    var seconds = sec_num - (hours * 3600) - (minutes * 60);
+/*
+ * Dashboard of the kiosk.
+ *
+ * The person never says which team they are in: the login already answered every team of
+ * theirs, and entering the room counts for all of them at once. So the top of the screen is
+ * one button for the room, and below it one card per team, each with the time accumulated
+ * there, who is inside right now and the ranking of that team.
+ */
 
-    if (hours   < 10) {hours   = "0"+hours;}
-    if (minutes < 10) {minutes = "0"+minutes;}
-    if (seconds < 10) {seconds = "0"+seconds;}
-    return hours+':'+minutes+':'+seconds;
-}
-function secondsToDuration(seconds) {
-    if(seconds == 0) return "0s";
-    const units = [
-        { label: "y", value: 31536000 }, // 1 year = 365 * 24 * 60 * 60 seconds
-        { label: "m", value: 2592000 },  // 1 month = 30 * 24 * 60 * 60 seconds
-        { label: "d", value: 86400 },    // 1 day = 24 * 60 * 60 seconds
-        { label: "h", value: 3600 },     // 1 hour = 60 * 60 seconds
-        { label: "m", value: 60 },       // 1 minute = 60 seconds
-        { label: "s", value: 1 }         // 1 second
-    ];
+let session = null;
+let status = null;
+let selectedTenantId = null;
+let ticking = null;
 
-    let remainingSeconds = seconds;
-    let result = [];
+/* ---------------------------------------------------------------------- loading */
 
-    for (const unit of units) {
-        const count = Math.floor(remainingSeconds / unit.value);
-        if (count > 0) {
-            result.push(`${count}${unit.label}`);
-            remainingSeconds %= unit.value;
-        }
-    }
-
-    return result.join(" ");
-}
-const vernumServerInstance = "https://vernumserver-0p1s.onrender.com/"
-
-if(localStorage.getItem("auth") === null) {
-    window.location.href = "index.html";
+async function loadStatus() {
+  status = await vernumCall('GET', '/attendance/me');
+  if (!selectedTenantId && status.tenants.length) {
+    selectedTenantId = status.tenants[0].tenantId;
+  }
 }
 
-function getToken() {
-    const authData = JSON.parse(localStorage.getItem("auth"));
-    return authData.accessToken;
+async function loadTenantPanel() {
+  if (!selectedTenantId) return;
+  const [inRoom, ranking] = await Promise.all([
+    vernumCall('GET', '/tenants/' + selectedTenantId + '/attendance/now'),
+    vernumCall('GET', '/tenants/' + selectedTenantId + '/attendance/ranking'),
+  ]);
+  drawInRoom(inRoom);
+  drawRanking(ranking);
 }
 
-function getUserId() {
-    const authData = JSON.parse(localStorage.getItem("auth"));
-    return authData.userId;
+/* ---------------------------------------------------------------------- drawing */
+
+function drawHeader() {
+  document.getElementById('welcome-msg').innerText = 'Olá, ' + session.user.name + '!';
+
+  const label = document.getElementById('isInRoom');
+  const button = document.getElementById('room-btn');
+  button.classList.remove('disabled');
+
+  if (status.inRoom) {
+    label.innerText = 'Na sala desde ' + formatClock(status.since);
+    button.innerText = 'Sair da sala';
+    button.className = 'btn btn-danger btn-lg px-5';
+  } else {
+    label.innerText = 'Você não está na sala.';
+    button.innerText = 'Entrar na sala';
+    button.className = 'btn btn-success btn-lg px-5';
+  }
+  drawElapsed();
 }
 
-async function isInRoom() {
-    const token = getToken();
-    try {
-        const response = await $.ajax({
-            url: vernumServerInstance + "attendances/isInRoom/" + getUserId(),
-            type: "GET",
-            crossDomain: true,
-            dataType: "json",
-            contentType: "application/json",
-            headers: {
-                "accept": "application/json",
-                "Access-Control-Allow-Origin": "*",
-                "Authorization": "Bearer " + token
-            }
-        });
-        return response; // Assuming the response is true or false
-    } catch (error) {
-        console.error("Error:", error);
-        return false; // Return false in case of an error
-    }
+/** The counter of the current stay, ticking while the person is inside. */
+function drawElapsed() {
+  const elapsed = document.getElementById('elapsed');
+  if (!status.inRoom || !status.since) {
+    elapsed.innerText = '';
+    return;
+  }
+  const seconds = Math.floor((Date.now() - new Date(status.since).getTime()) / 1000);
+  elapsed.innerText = secondsToDuration(seconds) + ' nesta visita';
 }
 
-async function getTotalTime() {
-    const token = getToken();
-    try {
-        const response = await $.ajax({
-            url: vernumServerInstance + "attendances/roomTime/" + getUserId(),
-            type: "GET",
-            crossDomain: true,
-            headers: {
-                "Access-Control-Allow-Origin": "*",
-                "Authorization": "Bearer " + token
-            }
-        });
-        return secondsToDuration(response.split(" ")[0]);
-    } catch (error) {
-        return "null" // Return null in case of an error
-    }
-}
+function drawTeams() {
+  const holder = document.getElementById('teams');
+  holder.innerHTML = '';
 
-window.addEventListener("load", (event) => {
-    const authData = JSON.parse(localStorage.getItem("auth"));
-    document.getElementById("welcome-msg").innerText = `Bem-vindo, ${authData.name}!`;
+  if (!status.tenants.length) {
+    holder.innerHTML = '<p class="text-muted mb-0">Nenhuma equipe sua registra presença.</p>';
+    return;
+  }
 
-    isInRoom().then((inRoom) => {
-        btn = document.getElementById("room-btn")
-        if(inRoom) {
-            document.getElementById("isInRoom").innerText = "Você está dentro da sala.";
-            btn.innerText = "Sair da sala";
-            btn.className = "btn btn-danger";
-        } else {
-            document.getElementById("isInRoom").innerText = "Você não está dentro da sala.";
-            btn.innerText = "Entrar na sala";
-            btn.className = "btn btn-success";
-        }
+  status.tenants.forEach((tenant) => {
+    const column = document.createElement('div');
+    column.className = 'col-12 col-md-6 col-lg-4';
+
+    const card = document.createElement('button');
+    card.type = 'button';
+    card.className = 'team-card w-100 text-start'
+      + (tenant.tenantId === selectedTenantId ? ' team-card--active' : '');
+    card.style.borderColor = tenant.tenantColor || '#8864AE';
+    card.addEventListener('click', () => {
+      selectedTenantId = tenant.tenantId;
+      drawTeams();
+      loadTenantPanel().catch(showError);
     });
 
-    getTotalTime().then((totalTime) => {
-        document.getElementById("totalTime").innerText = `${totalTime}`;
-    });
+    const stripe = document.createElement('span');
+    stripe.className = 'team-card__stripe';
+    stripe.style.background = tenant.tenantColor || '#8864AE';
 
-    document.getElementById("logout-btn").addEventListener("click", function() {
-        localStorage.removeItem("auth");
-        window.location.href = "index.html";
-    });
+    const name = document.createElement('strong');
+    name.innerText = tenant.tenantName + (tenant.teamNumber ? ' #' + tenant.teamNumber : '');
 
-    document.getElementById("room-btn").addEventListener("click", function() {
-        isInRoom().then((inRoom) => {
-            endpoint = inRoom ? "leave" : "enter";
-            
-            $.ajax({
-                url: vernumServerInstance + "attendances/" + endpoint,
-                type: "POST",
-                crossDomain: true,
-                headers: {
-                      "accept": "application/json",
-                      "Access-Control-Allow-Origin":"*",
-                      "Authorization": "Bearer " + getToken()
-                },
-                success: function(response) {
-                                document.location.reload();
-                },
-                error: function(xhr, status) {
-                    alert("Erro ao atualizar");
-                }
-            })
-    
-        
-        });
-    });
-    
+    const total = document.createElement('span');
+    total.className = 'd-block text-muted';
+    total.innerText = 'Total: ' + secondsToDuration(tenant.totalSeconds);
+
+    const badge = document.createElement('span');
+    badge.className = 'badge ' + (tenant.inRoom ? 'text-bg-success' : 'text-bg-light');
+    badge.innerText = tenant.inRoom ? 'contando agora' : 'fora da sala';
+
+    card.appendChild(stripe);
+    card.appendChild(name);
+    card.appendChild(total);
+    card.appendChild(badge);
+    column.appendChild(card);
+    holder.appendChild(column);
+  });
+
+  const chosen = status.tenants.find((tenant) => tenant.tenantId === selectedTenantId);
+  document.getElementById('panel-team').innerText = chosen ? chosen.tenantName : '';
+}
+
+function drawInRoom(entries) {
+  const body = document.getElementById('in-room-body');
+  body.innerHTML = '';
+  if (!entries.length) {
+    body.innerHTML = '<tr><td colspan="2" class="text-muted">Ninguém na sala.</td></tr>';
+    return;
+  }
+  entries.forEach((entry) => {
+    const row = document.createElement('tr');
+    row.innerHTML = '<td>' + escapeHtml(entry.userName) + '</td>'
+      + '<td>desde ' + formatClock(entry.startTime) + '</td>';
+    body.appendChild(row);
+  });
+}
+
+function drawRanking(ranking) {
+  const body = document.getElementById('ranking-body');
+  body.innerHTML = '';
+  if (!ranking.length) {
+    body.innerHTML = '<tr><td colspan="3" class="text-muted">Sem registros ainda.</td></tr>';
+    return;
+  }
+  ranking.forEach((line) => {
+    const row = document.createElement('tr');
+    row.innerHTML = '<th scope="row">' + line.position + '</th>'
+      + '<td>' + escapeHtml(line.userName) + (line.inRoom ? ' <span class="badge text-bg-success">na sala</span>' : '') + '</td>'
+      + '<td>' + secondsToDuration(line.totalSeconds) + '</td>';
+    body.appendChild(row);
+  });
+}
+
+function escapeHtml(value) {
+  const holder = document.createElement('span');
+  holder.innerText = value == null ? '' : value;
+  return holder.innerHTML;
+}
+
+function showError(error) {
+  const banner = document.getElementById('error-banner');
+  banner.innerText = error.message;
+  banner.classList.remove('d-none');
+}
+
+/* ----------------------------------------------------------------------- actions */
+
+async function toggleRoom() {
+  const button = document.getElementById('room-btn');
+  button.classList.add('disabled');
+  try {
+    status = await vernumCall('POST', status.inRoom ? '/attendance/leave' : '/attendance/enter');
+    drawHeader();
+    drawTeams();
+    await loadTenantPanel();
+  } catch (error) {
+    showError(error);
+  } finally {
+    button.classList.remove('disabled');
+  }
+}
+
+/* -------------------------------------------------------------------------- boot */
+
+window.addEventListener('load', async () => {
+  session = VernumSession.require();
+  if (!session) return;
+
+  document.getElementById('logout-btn').addEventListener('click', () => {
+    VernumSession.clear();
+    window.location.href = 'index.html';
+  });
+  document.getElementById('room-btn').addEventListener('click', toggleRoom);
+
+  try {
+    await loadStatus();
+    drawHeader();
+    drawTeams();
+    await loadTenantPanel();
+  } catch (error) {
+    showError(error);
+  }
+
+  //The counter of the current stay ticks locally; the rest is refreshed once a minute
+  ticking = setInterval(drawElapsed, 1000);
+  setInterval(() => {
+    loadStatus().then(() => {
+      drawHeader();
+      drawTeams();
+      return loadTenantPanel();
+    }).catch(() => {});
+  }, 60000);
 });
 
+window.addEventListener('unload', () => clearInterval(ticking));
