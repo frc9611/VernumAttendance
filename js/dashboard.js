@@ -3,8 +3,13 @@
  *
  * The person never says which team they are in: the login already answered every team of
  * theirs, and entering the room counts for all of them at once. So the top of the screen is
- * one button for the room, and below it one card per team, each with the time accumulated
- * there, who is inside right now and the ranking of that team.
+ * one button for the room and one total, and below it one card per team to pick whose ranking
+ * to read.
+ *
+ * There is a single room, shared by every team, and two things follow from that. The time in
+ * the room is one number and not one per team — those were the same figure repeated, which
+ * said nothing. And who is inside is everybody inside, each with the team they belong to as a
+ * label, because a list narrowed to one team would hide half the people standing there.
  */
 
 let session = null;
@@ -63,6 +68,13 @@ function drawElapsed() {
   elapsed.innerText = secondsToDuration(seconds) + ' nesta visita';
 }
 
+/** The time in the room, counted once: the room is the same for every team. */
+function drawTotal() {
+  const total = document.getElementById('total-room');
+  if (!total) return;
+  total.innerText = 'Total na sala: ' + secondsToDuration(status.totalSeconds || 0);
+}
+
 function drawTeams() {
   const holder = document.getElementById('teams');
   holder.innerHTML = '';
@@ -94,9 +106,10 @@ function drawTeams() {
     const name = document.createElement('strong');
     name.innerText = tenant.tenantName + (tenant.teamNumber ? ' #' + tenant.teamNumber : '');
 
-    const total = document.createElement('span');
-    total.className = 'd-block text-muted';
-    total.innerText = 'Total: ' + secondsToDuration(tenant.totalSeconds);
+    //No counter here on purpose: one room means one total, drawn once above
+    const hint = document.createElement('span');
+    hint.className = 'd-block text-muted';
+    hint.innerText = 'Ver o ranking desta equipe';
 
     const badge = document.createElement('span');
     badge.className = 'badge ' + (tenant.inRoom ? 'text-bg-success' : 'text-bg-light');
@@ -104,14 +117,15 @@ function drawTeams() {
 
     card.appendChild(stripe);
     card.appendChild(name);
-    card.appendChild(total);
+    card.appendChild(hint);
     card.appendChild(badge);
     column.appendChild(card);
     holder.appendChild(column);
   });
 
   const chosen = status.tenants.find((tenant) => tenant.tenantId === selectedTenantId);
-  document.getElementById('panel-team').innerText = chosen ? chosen.tenantName : '';
+  //The room below is everybody's; the team name belongs to the ranking beside it
+  document.getElementById('panel-team').innerText = chosen ? '· ' + chosen.tenantName : '';
 }
 
 function drawInRoom(entries) {
@@ -122,9 +136,13 @@ function drawInRoom(entries) {
     return;
   }
   entries.forEach((entry) => {
+    const teams = (entry.teams || [])
+      .map((team) => '<span class="badge rounded-pill text-bg-light border ms-1">'
+        + escapeHtml(team.tenantName) + '</span>')
+      .join('');
     const row = document.createElement('tr');
-    row.innerHTML = '<td>' + escapeHtml(entry.userName) + '</td>'
-      + '<td>desde ' + formatClock(entry.startTime) + '</td>';
+    row.innerHTML = '<td>' + escapeHtml(entry.userName) + teams + '</td>'
+      + '<td>desde ' + formatClock(entry.since) + '</td>';
     body.appendChild(row);
   });
 }
@@ -165,6 +183,7 @@ async function toggleRoom() {
   try {
     status = await vernumCall('POST', status.inRoom ? '/attendance/leave' : '/attendance/enter');
     drawHeader();
+    drawTotal();
     drawTeams();
     await loadTenantPanel();
   } catch (error) {
@@ -189,6 +208,7 @@ window.addEventListener('load', async () => {
   try {
     await loadStatus();
     drawHeader();
+    drawTotal();
     drawTeams();
     await loadTenantPanel();
   } catch (error) {
@@ -200,6 +220,7 @@ window.addEventListener('load', async () => {
   setInterval(() => {
     loadStatus().then(() => {
       drawHeader();
+      drawTotal();
       drawTeams();
       return loadTenantPanel();
     }).catch(() => {});

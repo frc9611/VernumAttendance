@@ -29,18 +29,21 @@
                 <p class="text-muted mb-1"><span id="isInRoom">Carregando...</span></p>
                 <p class="text-muted"><span id="elapsed"></span></p>
                 <button id="room-btn" class="btn btn-lg px-5 disabled">Carregando...</button>
+                <!-- One room, one total: the per-team figures were the same number repeated -->
+                <p class="text-muted mt-3 mb-0"><span id="total-room"></span></p>
             </div>
         </div>
 
         <!-- Uma equipe por card: a marcação conta para todas de uma vez -->
-        <h4 class="cy-white text-start mb-3">Suas equipes</h4>
+        <h4 class="cy-white text-start mb-3">Suas equipes <small class="opacity-75">— escolha de quem ver o ranking</small></h4>
         <div class="row g-3 mb-4" id="teams"></div>
 
         <div class="row g-3">
             <div class="col-12 col-lg-5">
                 <div class="card shadow-lg border-0 h-100">
                     <div class="card-body p-4">
-                        <h4 class="mb-3">Na sala agora <small class="text-muted" id="panel-team"></small></h4>
+                        <h4 class="mb-3">Na sala agora
+                            <small class="text-muted">· todas as equipes</small></h4>
                         <div class="table-responsive">
                             <table class="table table-hover mb-0">
                                 <thead class="table-light"><tr><th>Nome</th><th>Entrou</th></tr></thead>
@@ -53,7 +56,7 @@
             <div class="col-12 col-lg-7">
                 <div class="card shadow-lg border-0 h-100">
                     <div class="card-body p-4">
-                        <h4 class="mb-3">Ranking</h4>
+                        <h4 class="mb-3">Ranking <small class="text-muted" id="panel-team"></small></h4>
                         <div class="ranking-table-container table-responsive">
                             <table class="table table-hover mb-0">
                                 <thead class="table-light sticky-top">
